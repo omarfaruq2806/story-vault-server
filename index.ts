@@ -1,4 +1,5 @@
 import type { Request, Response, Express } from "express";
+import mongodb = require("mongodb");
 const express = require("express");
 const app: Express = express();
 require("dotenv").config();
@@ -31,25 +32,65 @@ async function run() {
     const usersCollection = db.collection("user");
     const storiesCollection = db.collection("stories");
 
-    // get all users
-    // app.get("/api/users", async (req: Request, res: Response) => {
-    //   const result = await usersCollection.find({}).toArray();
-    //   res.send(result);
-    // });
-
     // post a story
     app.post("/api/stories", async (req: Request, res: Response) => {
       const newStory = req.body;
-      const result = await storiesCollection.insertOne(newStory);
+      const result = await storiesCollection.insertOne({ ...newStory , createdAt: new Date() });
       console.log(result , 'from db');
       res.send(result);
     });
 
+
     // get all stories
     app.get("/api/stories", async (req: Request, res: Response) => {
-      const result = await storiesCollection.find({}).toArray();
+    const { userId, search, category, page = 1, limit = 10, latest, priceSort } = req.query;
+  
+    let query: any = {};
+    if (userId) query.userId = userId;
+    if (category) query.category = category;
+    if (search) {
+      query.title = { $regex: search, $options: 'i' }; 
+    }
+
+    
+
+    let sortingOption: any = {};
+    if (latest === 'true') {
+      sortingOption = { createdAt: -1 };
+    }else if (priceSort === 'asc') {
+    sortingOption = { price: 1 };
+    } else if (priceSort === 'desc') {
+    sortingOption = { price: -1 };
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+  
+    const result = await storiesCollection
+    .find(query)
+    .sort(sortingOption)
+    .skip(skip)
+    .limit(Number(limit))
+    .toArray();
+    
+    res.send(result);
+    });
+
+    // delete a story
+    app.delete("/api/stories/:id", async (req: Request, res: Response) => {
+      const id = req.params.id as string;
+      const query = { _id: new mongodb.ObjectId(id) };
+      const result = await storiesCollection.deleteOne(query);
       res.send(result);
     });
+
+    // get a single story
+    app.get("/api/stories/:id", async (req: Request, res: Response) => {
+      const id = req.params.id as string;
+      const query = { _id: new mongodb.ObjectId(id) };
+      const result = await storiesCollection.findOne(query);
+      res.send(result);
+    })
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
