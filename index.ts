@@ -9,12 +9,6 @@ app.use(cors());
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
-app.use(cors({
-  origin: 'https://story-vault-rho.vercel.app', 
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  credentials: true
-}));
-
 app.get("/", (req: Request, res: Response) => {
   res.send("Hello World!");
 });
